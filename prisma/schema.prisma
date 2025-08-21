@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  role      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([username], type: Hash)
+}
+
+model Customer {
+  id            Int      @id @default(autoincrement())
+  name          String
+  personalEmail String   @unique
+  phone         String   @unique
+  social        String?
+  socialLink    String?
+  lastPurchase  DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orders Order[]
+}
+
+model Service {
+  id        Int      @id @default(autoincrement())
+  logo      String
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  serviceAccounts ServiceAccount[]
+  orders          Order[]
+}
+
+model Provider {
+  id        Int      @id @default(autoincrement())
+  logo      String?
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  orders    Order[]
+}
+
+model Dealer {
+  id        Int      @id @default(autoincrement())
+  logo      String?
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  serviceAccounts ServiceAccount[]
+}
+
+model ServiceAccount {
+  id                Int      @id @default(autoincrement())
+  name              String
+  email             String
+  password          String
+  note              String?
+  isActive          Boolean  @default(true)
+  payment           String
+  personalSlots     Int
+  sharedSlots       Int
+  soldPersonalSlots Int      @default(0)
+  soldSharedSlots   Int      @default(0)
+  joinDate          DateTime
+  expiryDate        DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  dealerId          Int
+  serviceId         Int
+
+  dealer  Dealer  @relation(fields: [dealerId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+  orders  Order[]
+
+  @@index([serviceId], type: Hash)
+}
+
+model Order {
+  id               Int      @id @default(autoincrement())
+  email            String
+  accountType      String
+  status           String
+  startDate        DateTime
+  endDate          DateTime
+  note             String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  serviceId        Int
+  serviceAccountId Int
+  providerId       Int
+  customerId       Int
+
+  service        Service        @relation(fields: [serviceId], references: [id])
+  serviceAccount ServiceAccount @relation(fields: [serviceAccountId], references: [id])
+  provider       Provider       @relation(fields: [providerId], references: [id])
+  customer       Customer       @relation(fields: [customerId], references: [id])
+
+  @@index([customerId], type: Hash)
+  @@index([serviceAccountId], type: Hash)
+}

@@ -1,0 +1,34 @@
+import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import { CreateServiceAccountDto } from "./dto/create-service-account.dto";
+import { UpdateServiceAccountDto } from "./dto/update-service-account.dto";
+import { ServiceAccountService } from "./service-account.service";
+
+@Controller("service-account")
+export class ServiceAccountController {
+  constructor(private readonly serviceAccountService: ServiceAccountService) {}
+
+  @Post()
+  create(@Body() createServiceAccountDto: CreateServiceAccountDto) {
+    return this.serviceAccountService.create(createServiceAccountDto);
+  }
+
+  @Get()
+  findAll() {
+    return this.serviceAccountService.findAll();
+  }
+
+  @Get(":id")
+  findOne(@Param("id") id: string) {
+    return this.serviceAccountService.findOne(+id);
+  }
+
+  @Patch(":id")
+  update(@Param("id") id: string, @Body() updateServiceAccountDto: UpdateServiceAccountDto) {
+    return this.serviceAccountService.update(+id, updateServiceAccountDto);
+  }
+
+  @Delete(":id")
+  remove(@Param("id") id: string) {
+    return this.serviceAccountService.remove(+id);
+  }
+}
