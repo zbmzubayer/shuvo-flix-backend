@@ -27,6 +27,11 @@ export class ServiceAccountController {
     return this.serviceAccountService.update(+id, updateServiceAccountDto);
   }
 
+  @Patch("/toggle-status/:id")
+  toggleStatus(@Param("id") id: string) {
+    return this.serviceAccountService.toggleStatus(+id);
+  }
+
   @Delete(":id")
   remove(@Param("id") id: string) {
     return this.serviceAccountService.remove(+id);

@@ -1,16 +1,7 @@
 import { SERVICE_ACCOUNT_PAYMENT, ServiceAccountPayment } from "@/enums/service-account.enum";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import {
-  IsBoolean,
-  IsDate,
-  IsEmail,
-  IsEnum,
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-} from "class-validator";
+import { IsDate, IsEmail, IsEnum, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateServiceAccountDto {
   @IsNotEmpty()
@@ -32,11 +23,6 @@ export class CreateServiceAccountDto {
   @IsString()
   @ApiProperty({ required: false })
   note: string;
-
-  @IsOptional()
-  @IsBoolean()
-  @ApiProperty({ default: true })
-  isActive: boolean = true;
 
   @IsNotEmpty()
   @IsEnum(SERVICE_ACCOUNT_PAYMENT)

@@ -15,7 +15,13 @@ export class CustomerService {
 
   findAll() {
     return this.prisma.customer.findMany({
-      include: { orders: { include: { serviceAccount: true }, orderBy: { createdAt: "desc" } } },
+      include: {
+        orders: {
+          include: { service: true, serviceAccount: true },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
     });
   }
 

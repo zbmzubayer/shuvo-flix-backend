@@ -1,4 +1,5 @@
 import { PrismaService } from "@/modules/prisma/prisma.service";
+import { ServiceAccountService } from "@/modules/service-account/service-account.service";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma } from "generated/prisma";
 import { CreateOrderDto } from "./dto/create-order.dto";
@@ -6,7 +7,10 @@ import { UpdateOrderDto } from "./dto/update-order.dto";
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly serviceAccountService: ServiceAccountService
+  ) {}
 
   async create(createOrderDto: CreateOrderDto) {
     const { customer, ...orderDto } = createOrderDto;
@@ -14,7 +18,6 @@ export class OrderService {
     const [isCustomerExists, serviceAccount] = await Promise.all([
       this.prisma.customer.findUnique({ where: { phone: customer.phone } }),
       this.prisma.serviceAccount.findUniqueOrThrow({ where: { id: orderDto.serviceAccountId } }),
-      this.prisma.provider.findUniqueOrThrow({ where: { id: orderDto.providerId } }),
     ]);
 
     if (
@@ -40,6 +43,8 @@ export class OrderService {
       customerId = newCustomer.id;
     }
 
+    serviceAccountUpdateData.status = this.serviceAccountService.calculateStatus(serviceAccount);
+
     const [order] = await Promise.all([
       this.prisma.order.create({ data: { ...orderDto, customerId } }),
       isCustomerExists
@@ -59,14 +64,14 @@ export class OrderService {
 
   findAll() {
     return this.prisma.order.findMany({
-      include: { customer: true, serviceAccount: true, provider: true },
+      include: { customer: true, service: true, serviceAccount: true, provider: true },
     });
   }
 
   findOne(id: number) {
     return this.prisma.order.findUnique({
       where: { id },
-      include: { customer: true, serviceAccount: true, provider: true },
+      include: { customer: true, service: true, serviceAccount: true, provider: true },
     });
   }
 

@@ -1,7 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 
 import { PrismaService } from "@/modules/prisma/prisma.service";
 
+import { SERVICE_ACCOUNT_STATUS, ServiceAccountStatus } from "@/enums/service-account.enum";
+import { ServiceAccount } from "generated/prisma";
 import { CreateServiceAccountDto } from "./dto/create-service-account.dto";
 import { UpdateServiceAccountDto } from "./dto/update-service-account.dto";
 
@@ -24,7 +26,16 @@ export class ServiceAccountService {
   }
 
   findOne(id: number) {
-    return this.prisma.serviceAccount.findUnique({ where: { id } });
+    return this.prisma.serviceAccount.findUnique({
+      where: { id },
+      select: {
+        orders: {
+          where: { endDate: { gte: new Date() } },
+          include: { customer: true },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
   }
 
   async update(id: number, updateServiceAccountDto: UpdateServiceAccountDto) {
@@ -48,5 +59,40 @@ export class ServiceAccountService {
   async remove(id: number) {
     await this.prisma.serviceAccount.delete({ where: { id } });
     return true;
+  }
+
+  async toggleStatus(id: number) {
+    const serviceAccount = await this.prisma.serviceAccount.findUniqueOrThrow({ where: { id } });
+
+    if (
+      serviceAccount.status !== SERVICE_ACCOUNT_STATUS.disabled &&
+      serviceAccount.soldPersonalSlots + serviceAccount.soldSharedSlots > 0
+    ) {
+      throw new BadRequestException("Release all slots before disabling");
+    }
+
+    const newStatus =
+      serviceAccount.status === SERVICE_ACCOUNT_STATUS.disabled
+        ? this.calculateStatus(serviceAccount)
+        : SERVICE_ACCOUNT_STATUS.disabled;
+
+    await this.prisma.serviceAccount.update({
+      where: { id },
+      data: { status: newStatus },
+    });
+
+    return true;
+  }
+
+  calculateStatus(serviceAccount: ServiceAccount): ServiceAccountStatus {
+    const totalSlots = serviceAccount.personalSlots + serviceAccount.sharedSlots;
+    const totalSoldSlots = serviceAccount.soldPersonalSlots + serviceAccount.soldSharedSlots;
+    if (totalSoldSlots > 0 && totalSoldSlots < totalSlots) {
+      return SERVICE_ACCOUNT_STATUS.partial;
+    } else if (totalSoldSlots === totalSlots) {
+      return SERVICE_ACCOUNT_STATUS.full;
+    } else {
+      return SERVICE_ACCOUNT_STATUS.new;
+    }
   }
 }

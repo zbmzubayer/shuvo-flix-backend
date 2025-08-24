@@ -8,6 +8,11 @@ interface EnvConfig {
   CLOUDINARY_CLOUD_NAME?: string;
   CLOUDINARY_API_KEY?: string;
   CLOUDINARY_API_SECRET?: string;
+  SMTP_HOST: string;
+  SMTP_PORT: number;
+  SMTP_USERNAME: string;
+  SMTP_PASSWORD: string;
+  SMTP_FROM_EMAIL: string;
 }
 
 export const ENV: EnvConfig = {
@@ -18,4 +23,9 @@ export const ENV: EnvConfig = {
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  SMTP_HOST: process.env.SMTP_HOST!,
+  SMTP_PORT: Number(process.env.SMTP_PORT)!,
+  SMTP_USERNAME: process.env.SMTP_USERNAME!,
+  SMTP_PASSWORD: process.env.SMTP_PASSWORD!,
+  SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL!,
 };

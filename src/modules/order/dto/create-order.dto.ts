@@ -54,6 +54,11 @@ export class CreateOrderDto {
   @IsNotEmpty()
   @IsInt()
   @ApiProperty()
+  serviceId: number;
+
+  @IsNotEmpty()
+  @IsInt()
+  @ApiProperty()
   serviceAccountId: number;
 
   @IsNotEmpty()

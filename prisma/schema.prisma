@@ -69,7 +69,7 @@ model ServiceAccount {
   email             String
   password          String
   note              String?
-  isActive          Boolean  @default(true)
+  status            String   @default("New")
   payment           String
   personalSlots     Int
   sharedSlots       Int
