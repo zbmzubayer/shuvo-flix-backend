@@ -20,7 +20,7 @@ export class ServiceService {
   findOne(id: number) {
     return this.prisma.service.findUnique({
       where: { id },
-      include: { serviceAccounts: { orderBy: { createdAt: "asc" } } },
+      include: { serviceAccounts: { include: { dealer: true }, orderBy: { createdAt: "asc" } } },
     });
   }
 

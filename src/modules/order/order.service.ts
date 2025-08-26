@@ -1,6 +1,7 @@
+import { ORDER_ACCOUNT_TYPE, OrderAccountType } from "@/enums/order.enum";
 import { PrismaService } from "@/modules/prisma/prisma.service";
 import { ServiceAccountService } from "@/modules/service-account/service-account.service";
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { Prisma } from "generated/prisma";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { UpdateOrderDto } from "./dto/update-order.dto";
@@ -20,22 +21,12 @@ export class OrderService {
       this.prisma.serviceAccount.findUniqueOrThrow({ where: { id: orderDto.serviceAccountId } }),
     ]);
 
-    if (
-      serviceAccount.personalSlots <= serviceAccount.soldPersonalSlots &&
-      orderDto.accountType === "Personal"
-    ) {
-      throw new BadRequestException("No personal slots available");
-    } else if (
-      serviceAccount.sharedSlots <= serviceAccount.soldSharedSlots &&
-      orderDto.accountType === "Shared"
-    ) {
-      throw new BadRequestException("No shared slots available");
-    }
+    this.serviceAccountService.checkSlotAvailability(serviceAccount, orderDto.accountType);
 
     let customerId = isCustomerExists?.id ?? 0;
 
     const serviceAccountUpdateData: Prisma.ServiceAccountUncheckedUpdateInput =
-      orderDto.accountType === "Personal"
+      orderDto.accountType === ORDER_ACCOUNT_TYPE.personal
         ? { soldPersonalSlots: { increment: 1 } }
         : { soldSharedSlots: { increment: 1 } };
     if (!isCustomerExists) {
@@ -45,26 +36,29 @@ export class OrderService {
 
     serviceAccountUpdateData.status = this.serviceAccountService.calculateStatus(serviceAccount);
 
-    const [order] = await Promise.all([
-      this.prisma.order.create({ data: { ...orderDto, customerId } }),
-      isCustomerExists
-        ? this.prisma.customer.update({
-            where: { id: isCustomerExists.id },
-            data: { lastPurchase: new Date() },
-          })
-        : Promise.resolve(),
-      this.prisma.serviceAccount.update({
-        where: { id: orderDto.serviceAccountId },
-        data: serviceAccountUpdateData,
-      }),
-    ]);
+    return await this.prisma.$transaction(async (tx) => {
+      const [order] = await Promise.all([
+        tx.order.create({ data: { ...orderDto, customerId } }),
+        isCustomerExists
+          ? tx.customer.update({
+              where: { id: isCustomerExists.id },
+              data: { lastPurchase: new Date() },
+            })
+          : Promise.resolve(),
+        tx.serviceAccount.update({
+          where: { id: orderDto.serviceAccountId },
+          data: serviceAccountUpdateData,
+        }),
+      ]);
 
-    return order;
+      return order;
+    });
   }
 
   findAll() {
     return this.prisma.order.findMany({
       include: { customer: true, service: true, serviceAccount: true, provider: true },
+      orderBy: { createdAt: "desc" },
     });
   }
 
@@ -75,8 +69,82 @@ export class OrderService {
     });
   }
 
-  update(id: number, updateOrderDto: UpdateOrderDto) {
-    return `This action updates a #${id} order`;
+  async update(id: number, updateOrderDto: UpdateOrderDto) {
+    const order = await this.prisma.order.findUniqueOrThrow({
+      where: { id },
+      include: { serviceAccount: true },
+    });
+
+    // Check is service account is same or different
+    if (
+      updateOrderDto.serviceAccountId &&
+      order.serviceAccountId !== updateOrderDto.serviceAccountId
+    ) {
+      const serviceAccount = await this.prisma.serviceAccount.findUniqueOrThrow({
+        where: { id: updateOrderDto.serviceAccountId },
+      });
+      this.serviceAccountService.checkSlotAvailability(
+        serviceAccount,
+        (updateOrderDto.accountType ?? order.accountType) as OrderAccountType
+      );
+      // Update service account - slot and status
+      const serviceAccountUpdateData: Prisma.ServiceAccountUncheckedUpdateInput =
+        (updateOrderDto.accountType ?? order.accountType) === ORDER_ACCOUNT_TYPE.personal
+          ? { soldPersonalSlots: { increment: 1 } }
+          : { soldSharedSlots: { increment: 1 } };
+      serviceAccountUpdateData.status = this.serviceAccountService.calculateStatus(serviceAccount);
+      // Update existing service account - slot and status
+      const existingServiceAccountUpdateData: Prisma.ServiceAccountUncheckedUpdateInput =
+        (updateOrderDto.accountType ?? order.accountType) === ORDER_ACCOUNT_TYPE.personal
+          ? { soldPersonalSlots: { decrement: 1 } }
+          : { soldSharedSlots: { decrement: 1 } };
+      existingServiceAccountUpdateData.status = this.serviceAccountService.calculateStatus(
+        order.serviceAccount
+      );
+
+      return await this.prisma.$transaction(async (tx) => {
+        const [updatedOrder] = await Promise.all([
+          tx.order.update({ where: { id }, data: updateOrderDto }),
+          tx.serviceAccount.update({
+            where: { id: updateOrderDto.serviceAccountId },
+            data: serviceAccountUpdateData,
+          }),
+          tx.serviceAccount.update({
+            where: { id: order.serviceAccountId },
+            data: existingServiceAccountUpdateData,
+          }),
+        ]);
+        return updatedOrder;
+      });
+    }
+    // Check if account type is changing
+    else if (updateOrderDto.accountType && order.accountType !== updateOrderDto.accountType) {
+      this.serviceAccountService.checkSlotAvailability(
+        order.serviceAccount,
+        updateOrderDto.accountType
+      );
+      const serviceAccountUpdateData: Prisma.ServiceAccountUncheckedUpdateInput =
+        updateOrderDto.accountType === ORDER_ACCOUNT_TYPE.personal
+          ? {
+              soldPersonalSlots: { increment: 1 },
+              soldSharedSlots: { decrement: 1 },
+            }
+          : {
+              soldSharedSlots: { increment: 1 },
+              soldPersonalSlots: { decrement: 1 },
+            };
+      return await this.prisma.$transaction(async (tx) => {
+        const [updatedOrder] = await Promise.all([
+          tx.order.update({ where: { id }, data: updateOrderDto }),
+          tx.serviceAccount.update({
+            where: { id: order.serviceAccountId },
+            data: serviceAccountUpdateData,
+          }),
+        ]);
+        return updatedOrder;
+      });
+    }
+    return this.prisma.order.update({ where: { id }, data: updateOrderDto });
   }
 
   remove(id: number) {

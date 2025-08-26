@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 
 import { PrismaService } from "@/modules/prisma/prisma.service";
 
+import { ORDER_ACCOUNT_TYPE, OrderAccountType } from "@/enums/order.enum";
 import { SERVICE_ACCOUNT_STATUS, ServiceAccountStatus } from "@/enums/service-account.enum";
 import { ServiceAccount } from "generated/prisma";
 import { CreateServiceAccountDto } from "./dto/create-service-account.dto";
@@ -39,16 +40,8 @@ export class ServiceAccountService {
   }
 
   async update(id: number, updateServiceAccountDto: UpdateServiceAccountDto) {
-    await Promise.all([
-      updateServiceAccountDto.serviceId
-        ? this.prisma.service.findUniqueOrThrow({
-            where: { id: updateServiceAccountDto.serviceId },
-          })
-        : Promise.resolve(),
-      updateServiceAccountDto.dealerId
-        ? this.prisma.dealer.findUniqueOrThrow({ where: { id: updateServiceAccountDto.dealerId } })
-        : Promise.resolve(),
-    ]);
+    // const serviceAccount = await this.prisma.serviceAccount.findUniqueOrThrow({ where: { id } });
+    // TODO: Need to implement status, slot verification and modification
 
     return this.prisma.serviceAccount.update({
       where: { id },
@@ -82,6 +75,20 @@ export class ServiceAccountService {
     });
 
     return true;
+  }
+
+  checkSlotAvailability(serviceAccount: ServiceAccount, accountType: OrderAccountType) {
+    if (
+      accountType === ORDER_ACCOUNT_TYPE.shared &&
+      serviceAccount.sharedSlots <= serviceAccount.soldSharedSlots
+    ) {
+      throw new BadRequestException("No shared slots available");
+    } else if (
+      accountType === ORDER_ACCOUNT_TYPE.personal &&
+      serviceAccount.personalSlots <= serviceAccount.soldPersonalSlots
+    ) {
+      throw new BadRequestException("No personal slots available");
+    }
   }
 
   calculateStatus(serviceAccount: ServiceAccount): ServiceAccountStatus {
