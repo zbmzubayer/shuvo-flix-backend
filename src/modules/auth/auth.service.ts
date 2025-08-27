@@ -16,7 +16,7 @@ export class AuthService {
       select: { id: true, username: true, password: true, role: true },
     });
     if (!admin) {
-      throw new NotFoundException("Admin not found");
+      throw new NotFoundException("Username not found");
     }
 
     const isPasswordMatch = await hash.verify(password, admin.password);

@@ -1,6 +1,12 @@
 import { ENV } from "@/config/env";
 import { PrismaService } from "@/modules/prisma/prisma.service";
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { decode, getToken, JWT } from "next-auth/jwt";
 
 @Injectable()
@@ -36,7 +42,6 @@ export class AuthGuard implements CanActivate {
       }
       req.user = user; // Attach user to the request object
 
-      next();
       return true;
     } catch (error) {
       const nextAuthCookieName =
@@ -50,7 +55,7 @@ export class AuthGuard implements CanActivate {
         sameSite: "lax",
       });
 
-      console.error(error);
+      Logger.error(error);
       next(error);
       return false;
     }

@@ -1,10 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 
+import { AuthGuard } from "@/modules/auth/auth.guard";
 import { CreateProviderDto } from "./dto/create-provider.dto";
 import { UpdateProviderDto } from "./dto/update-provider.dto";
 import { ProviderService } from "./provider.service";
 
 @Controller("provider")
+@UseGuards(AuthGuard)
 export class ProviderController {
   constructor(private readonly providerService: ProviderService) {}
 

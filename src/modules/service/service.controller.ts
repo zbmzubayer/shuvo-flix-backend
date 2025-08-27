@@ -1,13 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
 
+import { AuthGuard } from "@/modules/auth/auth.guard";
 import { CreateServiceDto } from "./dto/create-service.dto";
 import { UpdateServiceDto } from "./dto/update-service.dto";
 import { ServiceService } from "./service.service";
 
-// @UseGuards(AuthGuard)
 @Controller("service")
+@UseGuards(AuthGuard)
 export class ServiceController {
-  private count: number = 0;
   constructor(private readonly serviceService: ServiceService) {}
 
   @Post()
@@ -17,8 +17,6 @@ export class ServiceController {
 
   @Get()
   findAll() {
-    this.count++;
-    console.log(this.count);
     return this.serviceService.findAll();
   }
 
