@@ -13,6 +13,11 @@ interface EnvConfig {
   SMTP_USERNAME: string;
   SMTP_PASSWORD: string;
   SMTP_FROM_EMAIL: string;
+  SMS_API_KEY: string;
+  SMS_SENDER_ID: string;
+  SMS_API_URL: string;
+  CONTACT_PHONE: string;
+  CONTACT_EMAIL: string;
 }
 
 export const ENV: EnvConfig = {
@@ -28,4 +33,9 @@ export const ENV: EnvConfig = {
   SMTP_USERNAME: process.env.SMTP_USERNAME!,
   SMTP_PASSWORD: process.env.SMTP_PASSWORD!,
   SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL!,
+  SMS_API_KEY: process.env.SMS_API_KEY!,
+  SMS_SENDER_ID: process.env.SMS_SENDER_ID!,
+  SMS_API_URL: process.env.SMS_API_URL!,
+  CONTACT_PHONE: process.env.CONTACT_PHONE!,
+  CONTACT_EMAIL: process.env.CONTACT_EMAIL!,
 };

@@ -1,7 +1,11 @@
+import { sendExpirationAlertEmail } from "@/email/templates/ExpirationAlert";
+import { sendExpirationReminderEmail } from "@/email/templates/ExpirationReminder";
 import { ORDER_ACCOUNT_TYPE } from "@/enums/order.enum";
 import { SERVICE_ACCOUNT_STATUS } from "@/enums/service-account.enum";
 import { PrismaService } from "@/modules/prisma/prisma.service";
 import { ServiceAccountService } from "@/modules/service-account/service-account.service";
+import { sendExpirationSMS } from "@/utils/sms";
+
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { Prisma } from "generated/prisma";
@@ -27,12 +31,19 @@ export class TaskService {
       },
       select: {
         accountType: true,
+        service: true,
         serviceAccount: true,
         customer: { select: { id: true, name: true, personalEmail: true, phone: true } },
       },
     });
     // Update Slot Status
     const updatePromises: Prisma.Prisma__ServiceAccountClient<{ id: number }>[] = [];
+    const customerPhonesServices: {
+      name: string;
+      phone: string;
+      email: string;
+      serviceName: string;
+    }[] = [];
     const ordersLength = orders.length;
     for (let i = 0; i < ordersLength; i++) {
       const serviceAccountUpdateData: Prisma.ServiceAccountUncheckedUpdateInput =
@@ -51,15 +62,52 @@ export class TaskService {
         select: { id: true },
       });
       updatePromises.push(promise);
+      customerPhonesServices.push({
+        name: orders[i].customer.name,
+        phone: orders[i].customer.phone,
+        email: orders[i].customer.personalEmail,
+        serviceName: orders[i].service.name,
+      });
     }
     await Promise.all(updatePromises);
     this.logger.debug("Released slots for expired orders: " + orders.length);
-    // Send email and sms to customers
+    // Send SMS and Email to customers
+    for (let i = 0; i < customerPhonesServices.length; i++) {
+      await Promise.all([
+        sendExpirationSMS(customerPhonesServices[i]),
+        sendExpirationAlertEmail({
+          user: { name: customerPhonesServices[i].name, email: customerPhonesServices[i].email },
+          serviceName: customerPhonesServices[i].serviceName,
+        }),
+      ]);
+    }
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async sendExpirationReminder() {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    this.logger.debug("Called every 5 seconds1: " + new Date().toISOString());
+    // Find the orders that will expire 2 days later
+    const orders = await this.prisma.order.findMany({
+      where: {
+        endDate: {
+          gte: new Date(new Date().setHours(0, 0, 0, 0) + 2 * 24 * 60 * 60 * 1000), // Start of the day after tomorrow
+          lt: new Date(new Date().setHours(0, 0, 0, 0) + 3 * 24 * 60 * 60 * 1000), // Start of three days later
+        },
+      },
+      select: {
+        accountType: true,
+        endDate: true,
+        service: true,
+        serviceAccount: true,
+        customer: { select: { id: true, name: true, personalEmail: true, phone: true } },
+      },
+    });
+
+    for (let i = 0; i < orders.length; i++) {
+      sendExpirationReminderEmail({
+        user: { name: orders[i].customer.name, email: orders[i].customer.personalEmail },
+        serviceName: orders[i].service.name,
+        expirationDate: new Date(orders[i].endDate).toLocaleDateString(),
+      });
+    }
   }
 }

@@ -40,12 +40,33 @@ export class ServiceAccountService {
   }
 
   async update(id: number, updateServiceAccountDto: UpdateServiceAccountDto) {
-    // const serviceAccount = await this.prisma.serviceAccount.findUniqueOrThrow({ where: { id } });
-    // TODO: Need to implement status, slot verification and modification
+    const serviceAccount = await this.prisma.serviceAccount.findUniqueOrThrow({ where: { id } });
+    if (
+      updateServiceAccountDto.personalSlots &&
+      updateServiceAccountDto.personalSlots < serviceAccount.soldPersonalSlots
+    ) {
+      throw new BadRequestException("Cannot reduce personal slots below sold amount");
+    }
+    if (
+      updateServiceAccountDto.sharedSlots &&
+      updateServiceAccountDto.sharedSlots < serviceAccount.soldSharedSlots
+    ) {
+      throw new BadRequestException("Cannot reduce shared slots below sold amount");
+    }
+    if (serviceAccount.status === SERVICE_ACCOUNT_STATUS.disabled) {
+      return this.prisma.serviceAccount.update({
+        where: { id },
+        data: updateServiceAccountDto,
+      });
+    }
+    serviceAccount.personalSlots =
+      updateServiceAccountDto.personalSlots ?? serviceAccount.personalSlots;
+    serviceAccount.sharedSlots = updateServiceAccountDto.sharedSlots ?? serviceAccount.sharedSlots;
+    const newStatus = this.calculateStatus(serviceAccount);
 
     return this.prisma.serviceAccount.update({
       where: { id },
-      data: updateServiceAccountDto,
+      data: { ...updateServiceAccountDto, status: newStatus },
     });
   }
 

@@ -1,7 +1,8 @@
 import { ORDER_ACCOUNT_TYPE, OrderAccountType } from "@/enums/order.enum";
+import { SERVICE_ACCOUNT_STATUS } from "@/enums/service-account.enum";
 import { PrismaService } from "@/modules/prisma/prisma.service";
 import { ServiceAccountService } from "@/modules/service-account/service-account.service";
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma } from "generated/prisma";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { UpdateOrderDto } from "./dto/update-order.dto";
@@ -20,6 +21,10 @@ export class OrderService {
       this.prisma.customer.findUnique({ where: { phone: customer.phone } }),
       this.prisma.serviceAccount.findUniqueOrThrow({ where: { id: orderDto.serviceAccountId } }),
     ]);
+
+    if (serviceAccount.status === SERVICE_ACCOUNT_STATUS.disabled) {
+      throw new BadRequestException("Account is disabled! Activate it before creating orders.");
+    }
 
     this.serviceAccountService.checkSlotAvailability(serviceAccount, orderDto.accountType);
 
@@ -83,6 +88,9 @@ export class OrderService {
       const serviceAccount = await this.prisma.serviceAccount.findUniqueOrThrow({
         where: { id: updateOrderDto.serviceAccountId },
       });
+      if (serviceAccount.status === SERVICE_ACCOUNT_STATUS.disabled) {
+        throw new BadRequestException("Account is disabled! Activate it before use.");
+      }
       this.serviceAccountService.checkSlotAvailability(
         serviceAccount,
         (updateOrderDto.accountType ?? order.accountType) as OrderAccountType
