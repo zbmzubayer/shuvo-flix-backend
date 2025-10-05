@@ -14,7 +14,7 @@ function ExpirationAlertEmail(props: ExpirationEmailProps): React.JSX.Element {
     <div>
       <h2>Subscription Expired</h2>
       <div>
-        <p>Hi, {props.user.name}</p>
+        <p>Hi {props.user.name},</p>
         <p>This is a reminder that your {props.serviceName} subscription has expired.</p>
         <p>Please contact support for renewal.</p>
         <br />
