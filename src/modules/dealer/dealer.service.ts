@@ -22,7 +22,6 @@ export class DealerService {
   }
 
   update(id: number, updateDealerDto: UpdateDealerDto) {
-    console.log(`Updating dealer with ID: ${id}`, updateDealerDto);
     return this.prisma.dealer.update({ where: { id }, data: updateDealerDto });
   }
 
