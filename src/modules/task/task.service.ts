@@ -19,7 +19,7 @@ export class TaskService {
 
   private readonly logger = new Logger(TaskService.name);
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: "Asia/Dhaka" })
   async releaseSlotAndNotify() {
     // Find the orders that expired yesterday
     const orders = await this.prisma.order.findMany({
@@ -83,7 +83,7 @@ export class TaskService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, { timeZone: "Asia/Dhaka" })
   async sendExpirationReminder() {
     // Find the orders that will expire 2 days later
     const orders = await this.prisma.order.findMany({
