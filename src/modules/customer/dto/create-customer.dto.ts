@@ -8,7 +8,7 @@ export class CreateCustomerDto {
   @ApiProperty()
   name: string;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsEmail()
   @ApiProperty()
   personalEmail: string;

@@ -21,7 +21,7 @@ import {
 import { CreateCustomerDto } from "@/modules/customer/dto/create-customer.dto";
 
 export class CreateOrderDto {
-  @IsNotEmpty()
+  @IsOptional()
   @IsEmail()
   @ApiProperty()
   email: string;
