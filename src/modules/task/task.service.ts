@@ -41,7 +41,7 @@ export class TaskService {
     const customerPhonesServices: {
       name: string;
       phone: string;
-      email: string;
+      email: string | null;
       serviceName: string;
     }[] = [];
     const ordersLength = orders.length;
@@ -65,7 +65,7 @@ export class TaskService {
       customerPhonesServices.push({
         name: orders[i].customer.name,
         phone: orders[i].customer.phone,
-        email: orders[i].customer.personalEmail,
+        email: orders[i].customer.personalEmail || null,
         serviceName: orders[i].service.name,
       });
     }
@@ -75,10 +75,15 @@ export class TaskService {
     for (let i = 0; i < customerPhonesServices.length; i++) {
       await Promise.all([
         sendExpirationSMS(customerPhonesServices[i]),
-        sendExpirationAlertEmail({
-          user: { name: customerPhonesServices[i].name, email: customerPhonesServices[i].email },
-          serviceName: customerPhonesServices[i].serviceName,
-        }),
+        customerPhonesServices[i].email
+          ? sendExpirationAlertEmail({
+              user: {
+                name: customerPhonesServices[i].name,
+                email: customerPhonesServices[i].email as string,
+              },
+              serviceName: customerPhonesServices[i].serviceName,
+            })
+          : Promise.resolve(),
       ]);
     }
   }
@@ -103,11 +108,16 @@ export class TaskService {
     });
 
     for (let i = 0; i < orders.length; i++) {
-      sendExpirationReminderEmail({
-        user: { name: orders[i].customer.name, email: orders[i].customer.personalEmail },
-        serviceName: orders[i].service.name,
-        expirationDate: new Date(orders[i].endDate).toLocaleDateString(),
-      });
+      if (orders[i].customer.personalEmail) {
+        sendExpirationReminderEmail({
+          user: {
+            name: orders[i].customer.name,
+            email: orders[i].customer.personalEmail as string,
+          },
+          serviceName: orders[i].service.name,
+          expirationDate: new Date(orders[i].endDate).toLocaleDateString(),
+        });
+      }
     }
   }
 }
