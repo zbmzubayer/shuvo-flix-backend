@@ -42,19 +42,18 @@ export class OrderService {
     serviceAccountUpdateData.status = this.serviceAccountService.calculateStatus(serviceAccount);
 
     return await this.prisma.$transaction(async (tx) => {
-      const [order] = await Promise.all([
-        tx.order.create({ data: { ...orderDto, customerId } }),
-        isCustomerExists
-          ? tx.customer.update({
-              where: { id: isCustomerExists.id },
-              data: { lastPurchase: new Date() },
-            })
-          : Promise.resolve(),
-        tx.serviceAccount.update({
-          where: { id: orderDto.serviceAccountId },
-          data: serviceAccountUpdateData,
-        }),
-      ]);
+      const order = await tx.order.create({ data: { ...orderDto, customerId } });
+      if (isCustomerExists) {
+        await tx.customer.update({
+          where: { id: isCustomerExists.id },
+          data: { lastPurchase: new Date() },
+        });
+      }
+
+      await tx.serviceAccount.update({
+        where: { id: orderDto.serviceAccountId },
+        data: serviceAccountUpdateData,
+      });
 
       return order;
     });
