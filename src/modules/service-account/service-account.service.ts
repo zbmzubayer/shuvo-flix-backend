@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 
 import { PrismaService } from "@/modules/prisma/prisma.service";
 
@@ -14,10 +14,22 @@ export class ServiceAccountService {
 
   async create(createServiceAccountDto: CreateServiceAccountDto) {
     // Check if the service and dealer exist before creating the service account
-    await Promise.all([
+    const [existingServiceAccount] = await Promise.all([
+      this.prisma.serviceAccount.findUnique({
+        where: {
+          email_serviceId: {
+            email: createServiceAccountDto.email,
+            serviceId: createServiceAccountDto.serviceId,
+          },
+        },
+      }),
       this.prisma.service.findUniqueOrThrow({ where: { id: createServiceAccountDto.serviceId } }),
       this.prisma.dealer.findUniqueOrThrow({ where: { id: createServiceAccountDto.dealerId } }),
     ]);
+
+    if (existingServiceAccount) {
+      throw new ConflictException("Service account with this email already exists");
+    }
 
     return this.prisma.serviceAccount.create({ data: createServiceAccountDto });
   }
