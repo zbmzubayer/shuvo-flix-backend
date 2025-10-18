@@ -1,4 +1,5 @@
 export const SERVICE_ACCOUNT_PAYMENT = {
+  pending: "Pending",
   paid: "Paid",
   due: "Due",
   unpaid: "Unpaid",
